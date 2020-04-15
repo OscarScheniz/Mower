@@ -10,6 +10,7 @@
 #define AUTONOM_MODE      0x04
 
 #define BUFF_LEN          10
+#define MAX_MILLIS_TO_WAIT 300  
 
 MeUltrasonicSensor *us = NULL; //PORT 10
 MeLineFollower line(PORT_9);
@@ -101,13 +102,25 @@ void Ultrasonic_Process(int distance_cm)
 void Ir_Process(int value){
 
   switch(value){
-    case S1_IN_S2_IN: //Serial.println("Sensor 1 and 2 are inside of black line"); 
+    
+    case S1_IN_S2_IN: //
+    Serial.println("Sensor 1 and 2 are inside of black line"); //Continue
+    Forward();
     break;
-    case S1_IN_S2_OUT: //Serial.println("Sensor 2 is outside of black line"); 
+    
+    case S1_IN_S2_OUT: //
+    Serial.println("Sensor 2 is outside of black line"); //Turn left
+    turnLeft();
     break;
-    case S1_OUT_S2_IN: //Serial.println("Sensor 1 is outside of black line"); 
+    
+    case S1_OUT_S2_IN: //
+    Serial.println("Sensor 1 is outside of black line"); //Turn right
+    turnRight();
     break;
-    case S1_OUT_S2_OUT: //Serial.println("Sensor 1 and 2 are outside of black line"); 
+    
+    case S1_OUT_S2_OUT: //
+    Serial.println("Sensor 1 and 2 are outside of black line"); //Backward
+    BackwardAndTurnRight();
     break;
   }
 }
@@ -136,6 +149,28 @@ void readSensor(int device)
   }
 }
 
+void dismantleRX(byte arr[])
+{ 
+  unsigned long starttime;
+  starttime = millis();
+  Serial.println();
+  while ( (Serial.available()<BUFF_LEN) && ((millis() - starttime) < MAX_MILLIS_TO_WAIT) ){}      
+  // hang in this loop until we either get 10 bytes of data or 0.3 second has gone by
+  
+  if(Serial.available() < BUFF_LEN)
+  {
+     // the 10 bytes of data didn't come in - handle the problem
+     //Serial.println("ERROR - Didn't get 10 bytes of data!");
+  }
+  else
+  {
+    Serial.println("Recieved all bytes"); 
+    for(int i = 0; i < BUFF_LEN; i++){
+      arr[i] = Serial.read();
+    } 
+    Serial.flush();
+  }  
+}
 
 void bluetoothTransmit(byte *arr)
 {
@@ -148,9 +183,15 @@ void setup() {
 }
 
 void loop() {
-  //byte arr[BUFF_LEN] = {0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6a}; // a, b, c, d, e...
-  //bluetoothTransmit(arr);
-  readSensor(IR_SENSOR);
-  readSensor(ULTRASONIC_SENSOR);
+  byte arr[BUFF_LEN] = {0x02, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x03}; // a, b, c, d, e...
+  byte rxArr[BUFF_LEN] = {0};
+  bluetoothTransmit(arr);
+  dismantleRX(rxArr);
+  if( rxArr != 0){
+    for(int i = 0; i<BUFF_LEN; i++)
+      Serial.println(rxArr[i], HEX);
+  }
+  //readSensor(IR_SENSOR);
+  //readSensor(ULTRASONIC_SENSOR);
   
 }
