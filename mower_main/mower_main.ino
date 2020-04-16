@@ -18,8 +18,16 @@ MeEncoderOnBoard Encoder_1(SLOT1);
 MeEncoderOnBoard Encoder_2(SLOT2);
 MeEncoderMotor encoders[2];
 
+uint8_t drive_mode = AUTONOM_MODE; // default mode
 uint8_t irRead = 0;
 int16_t moveSpeed = 180;
+
+   /*****************TRANSMIT ARRAY********************
+      start unit A/M cmd posX posY col colX colY end
+      0     1    2   3   4    5    6   7    8    9
+  *****************************************************/
+byte arr[BUFF_LEN] = {0x02, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x03}; // a, b, c, d, e...
+byte rxArr[BUFF_LEN] = {0};
 
 void encoder1_process(void)
 {
@@ -177,20 +185,35 @@ void bluetoothTransmit(byte *arr)
   Serial.write(arr, BUFF_LEN);
 }
 
+void manualDrive(){
+
+  
+}
+
+void initialize(){
+  
+  drive_mode = rxArr[0]; // vilken position kommer denna data?
+  if (drive_mode == AUTONOM_MODE){
+    Forward();
+  }
+  else if (drive_mode == MANUAL_MODE)
+    manualDrive();
+}
+
 void setup() {
   Serial.begin(115200);
-  Forward();
+  initialize();
 }
 
 void loop() {
-  byte arr[BUFF_LEN] = {0x02, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x03}; // a, b, c, d, e...
-  byte rxArr[BUFF_LEN] = {0};
+  
   bluetoothTransmit(arr);
   dismantleRX(rxArr);
   if( rxArr != 0){
     for(int i = 0; i<BUFF_LEN; i++)
       Serial.println(rxArr[i], HEX);
   }
+  
   //readSensor(IR_SENSOR);
   //readSensor(ULTRASONIC_SENSOR);
   
