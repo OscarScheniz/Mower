@@ -30,7 +30,7 @@ int16_t moveSpeed = 180;
       start unit A/M cmd posX posY col colX colY end
       0     1    2   3   4    5    6   7    8    9
   *****************************************************/
-byte arr[BUFF_LEN] = {0x02, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x03}; // a, b, c, d, e...
+byte txArr[BUFF_LEN] = {0x02, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x03}; // a, b, c, d, e...
 
 /*****************RECEIVE ARRAY*************************
 
@@ -191,37 +191,36 @@ void dismantleRX(byte arr[])
 
 void bluetoothTransmit(byte *arr)
 {
-  Serial.write(arr, BUFF_LEN);
+  Serial.write(txArr, BUFF_LEN);
 }
 
 void manualDrive(){
   
-int8_t control = rxArr[0]; // X position i array 
+int8_t control = rxArr[0]; // POSITION I ARRAY?
 
   switch(control)
   {
     case FORWARD:
-
-
+    Forward();
     break;
+    
     case BACKWARD:
-
-
+    Backward();
     break;
+    
     case LEFT:
-
-
+    turnLeft();
     break;
+    
     case RIGHT:
-
-
+    turnRight();
     break;
   }
 }
 
 void initialize(){
   
-  drive_mode = rxArr[0]; // X position i array?
+  drive_mode = rxArr[0]; // POSITION I ARRAY?
   if (drive_mode == AUTONOM_MODE){
     Forward();
   }
@@ -236,7 +235,7 @@ void setup() {
 
 void loop() {
   
-  bluetoothTransmit(arr);
+  bluetoothTransmit(txArr);
   dismantleRX(rxArr);
   if( rxArr != 0){
     for(int i = 0; i<BUFF_LEN; i++)
