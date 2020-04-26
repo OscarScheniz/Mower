@@ -8,12 +8,8 @@
 #define IR_SENSOR         0x02
 #define MANUAL_MODE       0x03
 #define AUTONOM_MODE      0x04
-#define FORWARD           0x05
-#define BACKWARD          0x06
-#define RIGHT             0x07
-#define LEFT              0x08
 
-#define BUFF_LEN          10
+#define BUFF_LEN          6
 #define MAX_MILLIS_TO_WAIT 300  
 
 MeUltrasonicSensor *us = NULL; //PORT 10
@@ -22,20 +18,10 @@ MeEncoderOnBoard Encoder_1(SLOT1);
 MeEncoderOnBoard Encoder_2(SLOT2);
 MeEncoderMotor encoders[2];
 
-uint8_t drive_mode = AUTONOM_MODE; // default driving mode
 uint8_t irRead = 0;
 int16_t moveSpeed = 180;
 
-   /*****************TRANSMIT ARRAY********************
-      start unit A/M cmd posX posY col colX colY end
-      0     1    2   3   4    5    6   7    8    9
-  *****************************************************/
-byte txArr[BUFF_LEN] = {0x02, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x03}; // a, b, c, d, e...
-
-/*****************RECEIVE ARRAY*************************
-
-      
-  *****************************************************/
+byte arr[BUFF_LEN] = {0x00, 0x00, 0x00, 0x7F, 0x7F, 0x00};
 byte rxArr[BUFF_LEN] = {0};
 
 void encoder1_process(void)
@@ -63,26 +49,31 @@ void encoder2_process()
 void Forward(){
   Encoder_1.setMotorPwm(-moveSpeed);
   Encoder_2.setMotorPwm(moveSpeed);
+  setForwardbit();
 }
 
 void Backward(){
   Encoder_1.setMotorPwm(moveSpeed);
   Encoder_2.setMotorPwm(-moveSpeed);
+  setBackwardbit();
 }
 
 void turnLeft(){
   Encoder_1.setMotorPwm(-moveSpeed);
   Encoder_2.setMotorPwm(-moveSpeed);
+  setLeftbit();
 }
 
 void turnRight(){
   Encoder_1.setMotorPwm(moveSpeed);
   Encoder_2.setMotorPwm(moveSpeed);
+  setRightbit();
 }
 
 void Stop(){
   Encoder_1.setMotorPwm(0);
   Encoder_2.setMotorPwm(0);
+  setStopbit();
 }
 
 void BackwardAndTurnLeft(){
@@ -104,6 +95,8 @@ void BackwardAndTurnRight(){
 void Ultrasonic_Process(int distance_cm)
 {
   if ((distance_cm < 20)){
+    arr[5] = 1; //Set collision true
+    bluetoothTransmit(arr);
     int randnum = random (10);
     Serial.println(randnum);
     if (randnum < 5){
@@ -121,23 +114,23 @@ void Ir_Process(int value){
   switch(value){
     
     case S1_IN_S2_IN: //
-    Serial.println("Sensor 1 and 2 are inside of black line"); //Continue
-    Forward();
+    //Serial.println("Sensor 1 and 2 are inside of black line"); //Backward
+    BackwardAndTurnRight();
     break;
     
     case S1_IN_S2_OUT: //
-    Serial.println("Sensor 2 is outside of black line"); //Turn left
+    //Serial.println("Sensor 2 is outside of black line"); //Turn left
     turnLeft();
     break;
     
     case S1_OUT_S2_IN: //
-    Serial.println("Sensor 1 is outside of black line"); //Turn right
+    //Serial.println("Sensor 1 is outside of black line"); //Turn right
     turnRight();
     break;
     
     case S1_OUT_S2_OUT: //
-    Serial.println("Sensor 1 and 2 are outside of black line"); //Backward
-    BackwardAndTurnRight();
+    //Serial.println("Sensor 1 and 2 are outside of black line"); //Forward
+    Forward();
     break;
   }
 }
@@ -166,87 +159,106 @@ void readSensor(int device)
   }
 }
 
+
 void dismantleRX(byte arr[])
 { 
-  unsigned long starttime;
-  starttime = millis();
-  Serial.println();
-  while ( (Serial.available()<BUFF_LEN) && ((millis() - starttime) < MAX_MILLIS_TO_WAIT) ){}      
-  // hang in this loop until we either get 10 bytes of data or 0.3 second has gone by
-  
-  if(Serial.available() < BUFF_LEN)
+  while(Serial.available() > 0)
   {
-     // the 10 bytes of data didn't come in - handle the problem
-     //Serial.println("ERROR - Didn't get 10 bytes of data!");
-  }
-  else
-  {
-    Serial.println("Recieved all bytes"); 
-    for(int i = 0; i < BUFF_LEN; i++){
+    for(int i = 0; i < 6; i++)
+    {
       arr[i] = Serial.read();
-    } 
-    Serial.flush();
-  }  
+      if(!(arr[0] == 1)) //data not from app
+      {
+        arr[0] = 0;
+        return;
+      }
+    }
+  }
 }
 
 void bluetoothTransmit(byte *arr)
 {
-  Serial.write(txArr, BUFF_LEN);
+  Serial.write(arr, BUFF_LEN);
+  delay(1000);
 }
 
-void manualDrive(){
+void manualDrive(int arr)
+{
   
-int8_t control = rxArr[0]; // POSITION I ARRAY?
+  //Check command
+  switch(arr){
+    case 0: //Stop
+    {
+      Stop();
+      break;
+    }
 
-  switch(control)
-  {
-    case FORWARD:
-    Forward();
-    break;
-    
-    case BACKWARD:
-    Backward();
-    break;
-    
-    case LEFT:
-    turnLeft();
-    break;
-    
-    case RIGHT:
-    turnRight();
-    break;
+    case 1: //Forward
+    {
+      Forward();
+      break;
+    }
+
+    case 2: //Backward
+    {
+      Backward();
+      break;
+    }
+
+    case 3: //Right
+    {
+      turnRight();
+      break;
+    }
+
+    case 4: //Left
+    {
+      turnLeft();
+      break;
+    }   
   }
 }
 
-void initialize(){
-  
-  drive_mode = rxArr[0]; // POSITION I ARRAY?
-  if (drive_mode == AUTONOM_MODE){
-    Forward();
-  }
-  else if (drive_mode == MANUAL_MODE)
-    manualDrive();
+void setStopbit(){
+  arr[2] = 0;
+}
+
+void setForwardbit(){
+  arr[2] = 1;
+}
+
+void setBackwardbit(){
+  arr[2] = 2;
+}
+
+void setRightbit(){
+  arr[2] = 3;
+}
+
+void setLeftbit(){
+  arr[2] = 4;
+}
+
+void setCollision(int i){
+  arr[6] = i;
 }
 
 void setup() {
   Serial.begin(115200);
-  initialize();
+  Forward();
 }
 
 void loop() {
+    
+  bluetoothTransmit(arr);
   
-  bluetoothTransmit(txArr);
   dismantleRX(rxArr);
-  if( rxArr != 0){
-    for(int i = 0; i<BUFF_LEN; i++)
-      Serial.println(rxArr[i], HEX);
+  if(rxArr[1] == 1) //Manual mode
+  {
+    manualDrive(rxArr[2]);
   }
-  if (drive_mode == AUTONOM_MODE){
-    readSensor(IR_SENSOR);
-    readSensor(ULTRASONIC_SENSOR);
-  }
-  else if(drive_mode == MANUAL_MODE){
-    manualDrive();
-  }
+  
+  readSensor(IR_SENSOR);
+  readSensor(ULTRASONIC_SENSOR);
   
 }
