@@ -2,6 +2,7 @@
 #include "SoftwareSerial.h"
 #include "Time.h"
 #include "millisDelay.h"
+#include <Wire.h>
 
 //Modes in statemachine
 #define BLUETOOTH_MODE    0x00
@@ -26,8 +27,7 @@
 #define COLLISION_FALSE   0x00
 #define COLLISION_TRUE    0x01
 
-#define BUFF_LEN          6
-#define MAX_MILLIS_TO_WAIT 300  
+#define BUFF_LEN          6  
 
 // Port setup
 MeUltrasonicSensor *us = NULL; //PORT 10
@@ -36,14 +36,12 @@ MeEncoderOnBoard Encoder_1(SLOT1);
 MeEncoderOnBoard Encoder_2(SLOT2);
 MeEncoderMotor encoders[2];
 MeBuzzer buzzer;
-millisDelay leftTimer;
+MeGyro gyro(1,0x69);
+millisDelay timer;
 
 // Global variables 
 uint8_t irRead = 0;
 int16_t moveSpeed = 127;
-int position_x = 127;
-int position_y = 127;
-int prevCmd = 0;
 bool delayRunning = false;
 
 /*****TRANSMIT (TX) ARRAY*****
@@ -79,35 +77,30 @@ void forward(){
   Encoder_1.setMotorPwm(-moveSpeed);
   Encoder_2.setMotorPwm(moveSpeed);
   setForwardbit();
-  prevCmd = FORWARD;
 }
 
 void backward(){
   Encoder_1.setMotorPwm(moveSpeed);
   Encoder_2.setMotorPwm(-moveSpeed);
   setBackwardbit();
-  prevCmd = BACKWARD;
 }
 
 void turnLeft(){
   Encoder_1.setMotorPwm(-moveSpeed);
   Encoder_2.setMotorPwm(-moveSpeed);
   setLeftbit();
-  prevCmd = LEFT;
 }
 
 void turnRight(){
   Encoder_1.setMotorPwm(moveSpeed);
   Encoder_2.setMotorPwm(moveSpeed);
   setRightbit();
-  prevCmd = RIGHT;
 }
 
 void Stop(){
   Encoder_1.setMotorPwm(0);
   Encoder_2.setMotorPwm(0);
   setStopbit();
-  prevCmd = STOP;
 }
 
 void backwardAndTurnLeft(){
@@ -138,7 +131,6 @@ void ultrasonic_Process(int distance_cm)
        backwardAndTurnRight();
     }
   }
-  
   setCollision(COLLISION_FALSE);
   forward();
 }
@@ -216,12 +208,11 @@ void dismantleRX(byte arr[])
 void bluetoothTransmit(byte *arr)
 {
   Serial.write(arr, BUFF_LEN);
-  delay(500);
+  delay(100);
 }
 
 void manualDrive(int arr)
 {
-  
   switch(arr){
     case STOP:
     {
@@ -279,75 +270,115 @@ void setCollision(int i){
   txArr[6] = i;
 }
 
-
-void calcForwardMovement(){
-   if (!delayRunning){ 
-     leftTimer.start(1000);
-     delayRunning = true;
-     }
-    else if (leftTimer.justFinished()) {  
-     txArr[4] += 1; // Y
-     delayRunning = false;
-   }
+float getAngleZ(){
+  gyro.update();
+  return gyro.getAngleZ();
 }
 
-void calcBackwardMovement(){
-  if (!delayRunning){ 
-     leftTimer.start(1000);
+void calcAnglePos(){
+  float angle = getAngleZ();
+  int i = 1;
+  if(txArr[2] == STOP)
+    return;
+  if(txArr[2] == BACKWARD) //In i dimman
+  {
+    int i = -1; 
+  }
+  if((angle >= -22) && (angle < 22)){
+    if (!delayRunning){ 
+     timer.start(1000);
      delayRunning = true;
      }
-    else if (leftTimer.justFinished()) {  
-     txArr[4] -= 1; // Y
+    else if (timer.justFinished()) {  
+     txArr[4] += i;
+     delayRunning = false;
+   } 
+  }
+  else if((angle >= 22) && (angle < 66)){
+    
+    if (!delayRunning){ 
+     timer.start(1000);
+     delayRunning = true;
+     }
+    else if (timer.justFinished()) {  
+     txArr[4]+= i;
+     txArr[3]+= i;
+     delayRunning = false;
+   } 
+  }
+  else if((angle >= 66) && (angle < 112)){
+    if (!delayRunning){ 
+     timer.start(1000);
+     delayRunning = true;
+     }
+    else if (timer.justFinished()) {  
+     txArr[3]+= i;
      delayRunning = false;
    }   
-}
-
-void calcRightMovement(){
-  if (!delayRunning){ 
-     leftTimer.start(1000);
-     delayRunning = true;
-     }
-    else if (leftTimer.justFinished()) {  
-     txArr[3] += 1; // X
-     delayRunning = false;
-   }
-}
-
-void calcLeftMovement(){
-
-    if (!delayRunning){ 
-     leftTimer.start(1000);
-     delayRunning = true;
-     }
-    else if (leftTimer.justFinished()) {  
-     txArr[3] -= 1; // X
-     delayRunning = false;
-   }
-           
-}
-
-void calcMovement(){
-  
-  int movement_dir = txArr[2];
-
-  switch(movement_dir){
-    case FORWARD:
-    calcForwardMovement();
-    break;
-
-    case BACKWARD: 
-    calcBackwardMovement();
-    break;
-
-    case RIGHT: 
-    calcRightMovement();
-    break;
-
-    case LEFT: 
-    calcLeftMovement();
-    break;
   }
-
+  else if((angle >= 112) && (angle < 157)){
+    if (!delayRunning){ 
+     timer.start(1000);
+     delayRunning = true;
+     }
+    else if (timer.justFinished()) {  
+     txArr[4]-= i;
+     txArr[3]+= i;
+     delayRunning = false;
+   }   
+  }
+  else if((angle >= 157) && (angle < 180)){
+    if (!delayRunning){ 
+     timer.start(1000);
+     delayRunning = true;
+     }
+    else if (timer.justFinished()) {  
+     txArr[4]-= i;
+     delayRunning = false;
+   }  
+  }
+  else if((angle < -22) && (angle >= -66)){
+    if (!delayRunning){ 
+     timer.start(1000);
+     delayRunning = true;
+     }
+    else if (timer.justFinished()) {  
+     txArr[4]+= i;
+     txArr[3]-= i;
+     delayRunning = false;
+    }    
+  }
+  else if((angle < -67) && (angle >= -112)){
+    if (!delayRunning){ 
+     timer.start(1000);
+     delayRunning = true;
+     }
+    else if (timer.justFinished()) {  
+     txArr[3]-= i;
+     delayRunning = false;
+   }  
+  }
+  else if((angle < -112) && (angle >= -157)){
+    if (!delayRunning){ 
+     timer.start(1000);
+     delayRunning = true;
+     }
+    else if (timer.justFinished()) {  
+     txArr[4]-= i;
+     txArr[3]-= i;
+     delayRunning = false;
+   } 
+  }
+  else if((angle < -157) && (angle >= -180)){
+    if (!delayRunning){ 
+     timer.start(1000);
+     delayRunning = true;
+     }
+    else if (timer.justFinished()) {  
+     txArr[4]-= i;
+     delayRunning = false;
+   }    
+  }
 }
 
 void init(byte txArr[]){
@@ -362,6 +393,8 @@ void init(byte txArr[]){
   buzzer.setpin(45);
   buzzer.tone(1000,100);
   buzzer.noTone();
+
+  gyro.begin();
   return;
 }
 
@@ -385,8 +418,8 @@ void loop() {
     readSensor(ULTRASONIC_SENSOR);
   } 
 
-  calcMovement(); // Calculate area of movement
+  calcAnglePos(); // Calculate area of movement
   
   bluetoothTransmit(txArr); // Send outgoing data 
-  
+ 
 }
