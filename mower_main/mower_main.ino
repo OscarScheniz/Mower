@@ -309,7 +309,7 @@ void setup() {
   
   Serial.begin(115200);
   init(txArr);
-  forward();
+  //forward();
 }
 
 void loop() {
@@ -328,7 +328,7 @@ void loop() {
     manualDrive(rxArr[2]);
   }
   
-  readSensor(IR_SENSOR);
-  readSensor(ULTRASONIC_SENSOR);
+  //readSensor(IR_SENSOR);
+  //readSensor(ULTRASONIC_SENSOR);
   
 }
