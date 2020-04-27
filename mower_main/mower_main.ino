@@ -122,7 +122,7 @@ void backwardAndTurnRight(){
   Stop();
 }
 
-void init(byte arr[]){
+void init(byte txArr[]){
 
   txArr[0] = MOWER;
   txArr[1] = AUTONOM_MODE;
@@ -130,7 +130,7 @@ void init(byte arr[]){
   txArr[3] = POSITION_X_START;
   txArr[4] = POSITION_Y_START;
   txArr[5] = COLLISION_FALSE;
-
+  
   //timer = millis();
   //attachInterrupt(arr[2], callback_func, CHANGE);
   return;
@@ -226,7 +226,7 @@ void dismantleRX(byte arr[])
 
 void bluetoothTransmit(byte *arr)
 {
-  Serial.write(txArr, BUFF_LEN);
+  Serial.write(arr, BUFF_LEN);
   delay(100);
 }
 
