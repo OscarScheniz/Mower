@@ -1,6 +1,7 @@
-#include <MeAuriga.h>
-#include <SoftwareSerial.h>
-#include <Time.h>
+#include "MeAuriga.h"
+#include "SoftwareSerial.h"
+#include "Time.h"
+#include "millisDelay.h"
 
 //Modes in statemachine
 #define BLUETOOTH_MODE    0x00
@@ -34,24 +35,22 @@ MeLineFollower line(PORT_9);
 MeEncoderOnBoard Encoder_1(SLOT1);
 MeEncoderOnBoard Encoder_2(SLOT2);
 MeEncoderMotor encoders[2];
+MeBuzzer buzzer;
+millisDelay leftTimer;
 
 // Global variables 
 uint8_t irRead = 0;
 int16_t moveSpeed = 127;
-long timer = 0;
-long prev_timer= 0;
-int prev_cmd = 1; //start in forward
+int position_x = 127;
+int position_y = 127;
+int prevCmd = 0;
+bool delayRunning = false;
 
 /*****TRANSMIT (TX) ARRAY*****
   unit A/M cmd posX posY col 
    0    1   2   3    4    5   
 *****************************/
 byte txArr[BUFF_LEN] = {0};
-
-/*****RECEIVE (RX) ARRAY*****
-
-    
-*****************************/
 byte rxArr[BUFF_LEN] = {0};
 
 void encoder1_process(void)
@@ -80,30 +79,35 @@ void forward(){
   Encoder_1.setMotorPwm(-moveSpeed);
   Encoder_2.setMotorPwm(moveSpeed);
   setForwardbit();
+  prevCmd = FORWARD;
 }
 
 void backward(){
   Encoder_1.setMotorPwm(moveSpeed);
   Encoder_2.setMotorPwm(-moveSpeed);
   setBackwardbit();
+  prevCmd = BACKWARD;
 }
 
 void turnLeft(){
   Encoder_1.setMotorPwm(-moveSpeed);
   Encoder_2.setMotorPwm(-moveSpeed);
   setLeftbit();
+  prevCmd = LEFT;
 }
 
 void turnRight(){
   Encoder_1.setMotorPwm(moveSpeed);
   Encoder_2.setMotorPwm(moveSpeed);
   setRightbit();
+  prevCmd = RIGHT;
 }
 
 void Stop(){
   Encoder_1.setMotorPwm(0);
   Encoder_2.setMotorPwm(0);
   setStopbit();
+  prevCmd = STOP;
 }
 
 void backwardAndTurnLeft(){
@@ -120,20 +124,6 @@ void backwardAndTurnRight(){
   turnRight();
   delay(1000);
   Stop();
-}
-
-void init(byte txArr[]){
-
-  txArr[0] = MOWER;
-  txArr[1] = AUTONOM_MODE;
-  txArr[2] = FORWARD;
-  txArr[3] = POSITION_X_START;
-  txArr[4] = POSITION_Y_START;
-  txArr[5] = COLLISION_FALSE;
-  
-  //timer = millis();
-  //attachInterrupt(arr[2], callback_func, CHANGE);
-  return;
 }
 
 void ultrasonic_Process(int distance_cm)
@@ -207,7 +197,6 @@ void readSensor(int device)
   }
 }
 
-
 void dismantleRX(byte arr[])
 { 
   while(Serial.available() > 0)
@@ -227,7 +216,7 @@ void dismantleRX(byte arr[])
 void bluetoothTransmit(byte *arr)
 {
   Serial.write(arr, BUFF_LEN);
-  delay(100);
+  delay(500);
 }
 
 void manualDrive(int arr)
@@ -289,46 +278,115 @@ void setLeftbit(){
 void setCollision(int i){
   txArr[6] = i;
 }
-/*
-void calcMovementDistX(){
-  
-     int dataPointX = 127 + (VELOCITY * ((timer - prevTimer) * 1000)))/2; 
+
+
+void calcForwardMovement(){
+   if (!delayRunning){ 
+     leftTimer.start(1000);
+     delayRunning = true;
+     }
+    else if (leftTimer.justFinished()) {  
+     txArr[4] += 1; // Y
+     delayRunning = false;
+   }
 }
 
-void calcMovementDistY(){
-  
-     int dataPointY = 127 + (VELOCITY * ((timer - prevTimer) * 1000)))/2; 
+void calcBackwardMovement(){
+  if (!delayRunning){ 
+     leftTimer.start(1000);
+     delayRunning = true;
+     }
+    else if (leftTimer.justFinished()) {  
+     txArr[4] -= 1; // Y
+     delayRunning = false;
+   }   
 }
 
-void callback_func()
-{
-  calcMovementDist(
-}*/
+void calcRightMovement(){
+  if (!delayRunning){ 
+     leftTimer.start(1000);
+     delayRunning = true;
+     }
+    else if (leftTimer.justFinished()) {  
+     txArr[3] += 1; // X
+     delayRunning = false;
+   }
+}
+
+void calcLeftMovement(){
+
+    if (!delayRunning){ 
+     leftTimer.start(1000);
+     delayRunning = true;
+     }
+    else if (leftTimer.justFinished()) {  
+     txArr[3] -= 1; // X
+     delayRunning = false;
+   }
+           
+}
+
+void calcMovement(){
+  
+  int movement_dir = txArr[2];
+
+  switch(movement_dir){
+    case FORWARD:
+    calcForwardMovement();
+    break;
+
+    case BACKWARD: 
+    calcBackwardMovement();
+    break;
+
+    case RIGHT: 
+    calcRightMovement();
+    break;
+
+    case LEFT: 
+    calcLeftMovement();
+    break;
+  }
+
+}
+
+void init(byte txArr[]){
+
+  txArr[0] = MOWER;
+  txArr[1] = MANUAL_MODE;
+  txArr[2] = STOP;
+  txArr[3] = POSITION_X_START;
+  txArr[4] = POSITION_Y_START;
+  txArr[5] = COLLISION_FALSE;
+  
+  buzzer.setpin(45);
+  buzzer.tone(1000,100);
+  buzzer.noTone();
+  return;
+}
 
 void setup() {
   
   Serial.begin(115200);
   init(txArr);
-  //forward();
 }
 
 void loop() {
-
-  bluetoothTransmit(txArr);
-  /*if(prev_cmd != arr[2])
-  {
-    //Reset timer
-  }*/
-
-  //prev_cmd = arr[2];
   
-  dismantleRX(rxArr);
-  if(rxArr[1] == 1) //Manual mode
+  dismantleRX(rxArr); // Teardown incoming data
+  
+  if(rxArr[1] == MANUAL_MODE) // Check if manual mode is enable
   {
     manualDrive(rxArr[2]);
   }
+  else if (rxArr[1] == AUTONOM_MODE) // Check if autonom mode is enable
+  { 
+    readSensor(IR_SENSOR);
+    readSensor(ULTRASONIC_SENSOR);
+  } 
+
+  calcMovement(); // Calculate area of movement
   
-  //readSensor(IR_SENSOR);
-  //readSensor(ULTRASONIC_SENSOR);
+  bluetoothTransmit(txArr); // Send outgoing data 
   
 }
