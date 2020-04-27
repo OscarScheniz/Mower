@@ -2,30 +2,56 @@
 #include <SoftwareSerial.h>
 #include <Time.h>
 
-//Different modes in statemachine
+//Modes in statemachine
 #define BLUETOOTH_MODE    0x00
 #define ULTRASONIC_SENSOR 0x01
 #define IR_SENSOR         0x02
-#define MANUAL_MODE       0x03
-#define AUTONOM_MODE      0x04
-#define VELOCITY          20    //20 CM/s 
+
+// Constant speed 
+#define VELOCITY          20    // 20 cm/s 
+
+// Communication Protocol
+#define MOWER             0x00
+#define APP               0x01
+#define MANUAL_MODE       0x00
+#define AUTONOM_MODE      0x01
+#define STOP              0x00
+#define FORWARD           0x01
+#define BACKWARD          0x02
+#define RIGHT             0x03
+#define LEFT              0x04
+#define POSITION_X_START  0x7F
+#define POSITION_Y_START  0x7F
+#define COLLISION_FALSE   0x00
+#define COLLISION_TRUE    0x01
 
 #define BUFF_LEN          6
 #define MAX_MILLIS_TO_WAIT 300  
 
+// Port setup
 MeUltrasonicSensor *us = NULL; //PORT 10
 MeLineFollower line(PORT_9);
 MeEncoderOnBoard Encoder_1(SLOT1);
 MeEncoderOnBoard Encoder_2(SLOT2);
 MeEncoderMotor encoders[2];
 
+// Global variables 
 uint8_t irRead = 0;
 int16_t moveSpeed = 127;
 long timer = 0;
 long prev_timer= 0;
 int prev_cmd = 1; //start in forward
 
-byte arr[BUFF_LEN] = {0};
+/*****TRANSMIT (TX) ARRAY*****
+  unit A/M cmd posX posY col 
+   0    1   2   3    4    5   
+*****************************/
+byte txArr[BUFF_LEN] = {0};
+
+/*****RECEIVE (RX) ARRAY*****
+
+    
+*****************************/
 byte rxArr[BUFF_LEN] = {0};
 
 void encoder1_process(void)
@@ -50,13 +76,13 @@ void encoder2_process()
   }
 }
 
-void Forward(){
+void forward(){
   Encoder_1.setMotorPwm(-moveSpeed);
   Encoder_2.setMotorPwm(moveSpeed);
   setForwardbit();
 }
 
-void Backward(){
+void backward(){
   Encoder_1.setMotorPwm(moveSpeed);
   Encoder_2.setMotorPwm(-moveSpeed);
   setBackwardbit();
@@ -80,16 +106,16 @@ void Stop(){
   setStopbit();
 }
 
-void BackwardAndTurnLeft(){
-  Backward();
+void backwardAndTurnLeft(){
+  backward();
   delay(1000);
   turnLeft();
   delay(1000);
   Stop();
 }
 
-void BackwardAndTurnRight(){
-  Backward();
+void backwardAndTurnRight(){
+  backward();
   delay(1000);
   turnRight();
   delay(1000);
@@ -98,66 +124,61 @@ void BackwardAndTurnRight(){
 
 void init(byte arr[]){
 
-  arr[0] = 0x00;
-  arr[1] = 0x00;
-  arr[2] = 0x01;
-  arr[3] = 0x7F;
-  arr[4] = 0x7F;
-  arr[5] = 0x00;
+  txArr[0] = MOWER;
+  txArr[1] = AUTONOM_MODE;
+  txArr[2] = FORWARD;
+  txArr[3] = POSITION_X_START;
+  txArr[4] = POSITION_Y_START;
+  txArr[5] = COLLISION_FALSE;
 
   //timer = millis();
   //attachInterrupt(arr[2], callback_func, CHANGE);
   return;
 }
 
-void Ultrasonic_Process(int distance_cm)
+void ultrasonic_Process(int distance_cm)
 {
   if ((distance_cm < 20)){
-    setCollision(1);
-    //bluetoothTransmit(arr);
+    setCollision(COLLISION_TRUE);
     int randnum = random (10);
-    Serial.println(randnum);
     if (randnum < 5){
-      BackwardAndTurnLeft();
+      backwardAndTurnLeft();
     }
     else if (randnum >= 5){
-       BackwardAndTurnRight();
+       backwardAndTurnRight();
     }
   }
-  setCollision(0);
-  Forward();
+  
+  setCollision(COLLISION_FALSE);
+  forward();
 }
 
-void Ir_Process(int value){
+void ir_Process(int value){
 
   switch(value){
     
-    case S1_IN_S2_IN: //
-    //Serial.println("Sensor 1 and 2 are inside of black line"); //Backward
-    setCollision(1);
-    BackwardAndTurnRight();
-    setCollision(0);
+    case S1_IN_S2_IN: 
+    setCollision(COLLISION_TRUE);
+    backwardAndTurnRight();
+    setCollision(COLLISION_FALSE);
     break;
     
-    case S1_IN_S2_OUT: //
-    //Serial.println("Sensor 2 is outside of black line"); //Turn left
-    setCollision(1);
+    case S1_IN_S2_OUT: 
+    setCollision(COLLISION_TRUE);
     turnLeft();
-    setCollision(0);
+    setCollision(COLLISION_FALSE);
     break;
     
-    case S1_OUT_S2_IN: //
-    //Serial.println("Sensor 1 is outside of black line"); //Turn right
-    setCollision(1);
+    case S1_OUT_S2_IN: 
+    setCollision(COLLISION_TRUE);
     turnRight();
-    setCollision(0);
+    setCollision(COLLISION_FALSE);
     break;
     
-    case S1_OUT_S2_OUT: //
-    //Serial.println("Sensor 1 and 2 are outside of black line"); //Forward
-    setCollision(1);
-    Forward();
-    setCollision(0);
+    case S1_OUT_S2_OUT: 
+    setCollision(COLLISION_TRUE);
+    forward();
+    setCollision(COLLISION_FALSE);
     break;
   }
 }
@@ -173,7 +194,7 @@ void readSensor(int device)
     {
       us = new MeUltrasonicSensor(PORT_10);
     }
-    Ultrasonic_Process(us->distanceCm());
+    ultrasonic_Process(us->distanceCm());
     break;
 
     case IR_SENSOR:
@@ -181,7 +202,7 @@ void readSensor(int device)
     pinMode(line.pin1(),INPUT);
     pinMode(line.pin2(),INPUT);
     value = line.dRead1()*2+line.dRead2();
-    Ir_Process(value);
+    ir_Process(value);
     break;
   }
 }
@@ -194,7 +215,7 @@ void dismantleRX(byte arr[])
     for(int i = 0; i < 6; i++)
     {
       arr[i] = Serial.read();
-      if(!(arr[0] == 1)) //data not from app
+      if(!(arr[0] == 1)) // data not from app
       {
         arr[0] = 0;
         return;
@@ -205,40 +226,39 @@ void dismantleRX(byte arr[])
 
 void bluetoothTransmit(byte *arr)
 {
-  Serial.write(arr, BUFF_LEN);
+  Serial.write(txArr, BUFF_LEN);
   delay(100);
 }
 
 void manualDrive(int arr)
 {
   
-  //Check command
   switch(arr){
-    case 0: //Stop
+    case STOP:
     {
       Stop();
       break;
     }
 
-    case 1: //Forward
+    case FORWARD:
     {
-      Forward();
+      forward();
       break;
     }
 
-    case 2: //Backward
+    case BACKWARD:
     {
-      Backward();
+      backward();
       break;
     }
 
-    case 3: //Right
+    case RIGHT:
     {
       turnRight();
       break;
     }
 
-    case 4: //Left
+    case LEFT:
     {
       turnLeft();
       break;
@@ -247,27 +267,27 @@ void manualDrive(int arr)
 }
 
 void setStopbit(){
-  arr[2] = 0;
+  txArr[2] = STOP;
 }
 
 void setForwardbit(){
-  arr[2] = 1;
+  txArr[2] = FORWARD;
 }
 
 void setBackwardbit(){
-  arr[2] = 2;
+  txArr[2] = BACKWARD;
 }
 
 void setRightbit(){
-  arr[2] = 3;
+  txArr[2] = RIGHT;
 }
 
 void setLeftbit(){
-  arr[2] = 4;
+  txArr[2] = LEFT;
 }
 
 void setCollision(int i){
-  arr[6] = i;
+  txArr[6] = i;
 }
 /*
 void calcMovementDistX(){
@@ -286,22 +306,21 @@ void callback_func()
 }*/
 
 void setup() {
+  
   Serial.begin(115200);
-  init(arr);
-  Forward();
+  init(txArr);
+  forward();
 }
 
 void loop() {
 
-  bluetoothTransmit(arr);
+  bluetoothTransmit(txArr);
   /*if(prev_cmd != arr[2])
   {
     //Reset timer
   }*/
 
   //prev_cmd = arr[2];
-
-  
   
   dismantleRX(rxArr);
   if(rxArr[1] == 1) //Manual mode
