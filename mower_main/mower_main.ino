@@ -56,19 +56,16 @@ void encoder1_process(void)
   if (digitalRead(Encoder_1.getPortB()) == 0){
     Encoder_1.pulsePosMinus(); 
   }
-  else
-  {
+  else{
     Encoder_1.pulsePosPlus();
   }
 }
 
-void encoder2_process()
-{
+void encoder2_process(){
   if (digitalRead(Encoder_2.getPortB()) == 0){
     Encoder_2.pulsePosMinus(); 
   }
-  else
-  {
+  else{
     Encoder_2.pulsePosPlus();
   }
 }
@@ -119,8 +116,7 @@ void backwardAndTurnRight(){
   Stop();
 }
 
-void ultrasonic_Process(int distance_cm)
-{
+void ultrasonic_Process(int distance_cm){
   if ((distance_cm < 20)){
     setCollision(COLLISION_TRUE);
     int randnum = random (10);
@@ -136,7 +132,6 @@ void ultrasonic_Process(int distance_cm)
 }
 
 void ir_Process(int value){
-
   switch(value){
     
     case S1_IN_S2_IN: 
@@ -165,15 +160,13 @@ void ir_Process(int value){
   }
 }
 
-void readSensor(int device)
-{
+void readSensor(int device){
   int distance = 0;
   
   switch(device)
   {
     case ULTRASONIC_SENSOR:
-    if(us == NULL)
-    {
+    if(us == NULL){
       us = new MeUltrasonicSensor(PORT_10);
     }
     ultrasonic_Process(us->distanceCm());
@@ -189,15 +182,11 @@ void readSensor(int device)
   }
 }
 
-void dismantleRX(byte arr[])
-{ 
-  while(Serial.available() > 0)
-  {
-    for(int i = 0; i < 6; i++)
-    {
+void dismantleRX(byte arr[]){ 
+  while(Serial.available() > 0){
+    for(int i = 0; i < 6; i++){
       arr[i] = Serial.read();
-      if(!(arr[0] == 1)) // data not from app
-      {
+      if(!(arr[0] == 1)){ // data not from app
         arr[0] = 0;
         return;
       }
@@ -205,44 +194,32 @@ void dismantleRX(byte arr[])
   }
 }
 
-void bluetoothTransmit(byte *arr)
-{
+void bluetoothTransmit(byte *arr){
   Serial.write(arr, BUFF_LEN);
   delay(100);
 }
 
-void manualDrive(int arr)
-{
+void manualDrive(int arr){
   switch(arr){
     case STOP:
-    {
       Stop();
       break;
-    }
 
     case FORWARD:
-    {
       forward();
       break;
-    }
 
     case BACKWARD:
-    {
       backward();
       break;
-    }
 
     case RIGHT:
-    {
       turnRight();
       break;
-    }
 
     case LEFT:
-    {
       turnLeft();
-      break;
-    }   
+      break;  
   }
 }
 
@@ -280,8 +257,7 @@ void calcAnglePos(){
   int i = 1;
   if(txArr[2] == STOP)
     return;
-  if(txArr[2] == BACKWARD) //In i dimman
-  {
+  if(txArr[2] == BACKWARD){ //In i dimman
     int i = -1; 
   }
   if((angle >= -22) && (angle < 22)){
@@ -399,7 +375,6 @@ void init(byte txArr[]){
 }
 
 void setup() {
-  
   Serial.begin(115200);
   init(txArr);
 }
@@ -421,5 +396,4 @@ void loop() {
   calcAnglePos(); // Calculate area of movement
   
   bluetoothTransmit(txArr); // Send outgoing data 
- 
 }
