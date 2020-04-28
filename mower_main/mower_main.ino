@@ -27,22 +27,25 @@
 #define COLLISION_FALSE   0x00
 #define COLLISION_TRUE    0x01
 
+
 #define BUFF_LEN          6  
 
+
 // Port setup
-MeUltrasonicSensor *us = NULL; //PORT 10
+MeUltrasonicSensor ultrasensor(PORT_10); //PORT 10
 MeLineFollower line(PORT_9);
 MeEncoderOnBoard Encoder_1(SLOT1);
 MeEncoderOnBoard Encoder_2(SLOT2);
 MeEncoderMotor encoders[2];
 MeBuzzer buzzer;
 MeGyro gyro(1,0x69);
-millisDelay timer;
+millisDelay timer, timer2;
 
 // Global variables 
 uint8_t irRead = 0;
 int16_t moveSpeed = 127;
 bool delayRunning = false;
+bool transmitRunning = false;
 
 /*****TRANSMIT (TX) ARRAY*****
   unit A/M cmd posX posY col 
@@ -101,33 +104,28 @@ void Stop(){
 }
 
 void backwardAndTurnLeft(){
-  backward();
+  Encoder_1.setMotorPwm(moveSpeed/4);
+  Encoder_2.setMotorPwm(-moveSpeed);
   delay(1000);
-  turnLeft();
-  delay(1000);
-  Stop();
 }
 
 void backwardAndTurnRight(){
-  backward();
+  Encoder_1.setMotorPwm(moveSpeed);
+  Encoder_2.setMotorPwm(-moveSpeed/4);
   delay(1000);
-  turnRight();
-  delay(1000);
-  Stop();
 }
 
 void ultrasonic_Process(int distance_cm){
   if ((distance_cm < 20)){
-    setCollision(COLLISION_TRUE);
+    setCollisionBit(COLLISION_TRUE);
     int randnum = random (10);
     if (randnum < 5){
-      backwardAndTurnLeft();
+       backwardAndTurnLeft();
     }
     else if (randnum >= 5){
        backwardAndTurnRight();
     }
   }
-  setCollision(COLLISION_FALSE);
   forward();
 }
 
@@ -135,27 +133,23 @@ void ir_Process(int value){
   switch(value){
     
     case S1_IN_S2_IN: 
-    setCollision(COLLISION_TRUE);
+    setCollisionBit(COLLISION_TRUE);
     backwardAndTurnRight();
-    setCollision(COLLISION_FALSE);
     break;
     
     case S1_IN_S2_OUT: 
-    setCollision(COLLISION_TRUE);
+    setCollisionBit(COLLISION_TRUE);
     turnLeft();
-    setCollision(COLLISION_FALSE);
     break;
     
     case S1_OUT_S2_IN: 
-    setCollision(COLLISION_TRUE);
+    setCollisionBit(COLLISION_TRUE);
     turnRight();
-    setCollision(COLLISION_FALSE);
     break;
     
     case S1_OUT_S2_OUT: 
-    setCollision(COLLISION_TRUE);
+    setCollisionBit(COLLISION_FALSE);
     forward();
-    setCollision(COLLISION_FALSE);
     break;
   }
 }
@@ -166,27 +160,24 @@ void readSensor(int device){
   switch(device)
   {
     case ULTRASONIC_SENSOR:
-    if(us == NULL){
-      us = new MeUltrasonicSensor(PORT_10);
-    }
-    ultrasonic_Process(us->distanceCm());
+    ultrasonic_Process(ultrasensor.distanceCm());
     break;
 
     case IR_SENSOR:
-    int value = 0;
-    pinMode(line.pin1(),INPUT);
-    pinMode(line.pin2(),INPUT);
-    value = line.dRead1()*2+line.dRead2();
+    int value = line.readSensors();
     ir_Process(value);
     break;
   }
 }
 
 void dismantleRX(byte arr[]){ 
-  while(Serial.available() > 0){
-    for(int i = 0; i < 6; i++){
+  while(Serial.available() > 0)
+  {
+    for(int i = 0; i < 6; i++)
+    {
       arr[i] = Serial.read();
-      if(!(arr[0] == 1)){ // data not from app
+      if(!(arr[0] == 1))// data not from app
+      { 
         arr[0] = 0;
         return;
       }
@@ -195,8 +186,15 @@ void dismantleRX(byte arr[]){
 }
 
 void bluetoothTransmit(byte *arr){
-  Serial.write(arr, BUFF_LEN);
-  delay(100);
+
+  if (!transmitRunning){ 
+     timer2.start(100);
+     transmitRunning = true;
+     }
+  else if (timer2.justFinished()) {  
+     Serial.write(arr, BUFF_LEN);
+     transmitRunning = false;
+  }    
 }
 
 void manualDrive(int arr){
@@ -243,8 +241,8 @@ void setLeftbit(){
   txArr[2] = LEFT;
 }
 
-void setCollision(int i){
-  txArr[6] = i;
+void setCollisionBit(int i){
+  txArr[5] = i;
 }
 
 float getAngleZ(){
@@ -357,6 +355,7 @@ void calcAnglePos(){
   }
 }
 
+
 void init(byte txArr[]){
 
   txArr[0] = MOWER;
@@ -394,6 +393,7 @@ void loop() {
   } 
 
   calcAnglePos(); // Calculate area of movement
-  
+
   bluetoothTransmit(txArr); // Send outgoing data 
+  setCollisionBit(COLLISION_FALSE); 
 }
