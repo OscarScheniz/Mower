@@ -4,6 +4,7 @@
 #include "millisDelay.h"
 #include <Wire.h>
 
+
 //Modes in statemachine
 #define BLUETOOTH_MODE    0x00
 #define ULTRASONIC_SENSOR 0x01
@@ -366,7 +367,7 @@ void init(byte txArr[]){
   txArr[5] = COLLISION_FALSE;
   
   buzzer.setpin(45);
-  buzzer.tone(1000,100);
+  buzzer.tone(300,100);
   buzzer.noTone();
 
   gyro.begin();
@@ -375,7 +376,7 @@ void init(byte txArr[]){
 
 void setup() {
   Serial.begin(115200);
-  init(txArr);
+  init(txArr);  
 }
 
 void loop() {
