@@ -12,6 +12,7 @@
 
 // Constant speed 
 #define VELOCITY          20    // 20 cm/s 
+#define COLLISION_DIST    20 
 
 // Communication Protocol
 #define MOWER             0x00
@@ -52,26 +53,7 @@ bool transmitRunning = false;
 *****************************/
 byte txArr[BUFF_LEN] = {0};
 byte rxArr[BUFF_LEN] = {0};
-/*
-void encoder1_process(void)
-{
-  if (digitalRead(Encoder_1.getPortB()) == 0){
-    Encoder_1.pulsePosMinus(); 
-  }
-  else{
-    Encoder_1.pulsePosPlus();
-  }
-}
 
-void encoder2_process(){
-  if (digitalRead(Encoder_2.getPortB()) == 0){
-    Encoder_2.pulsePosMinus(); 
-  }
-  else{
-    Encoder_2.pulsePosPlus();
-  }
-}
-*/
 void forward(){
   Encoder_1.setMotorPwm(-moveSpeed);
   Encoder_2.setMotorPwm(moveSpeed);
@@ -115,7 +97,7 @@ void backwardAndTurnRight(){
 }
 
 void ultrasonic_Process(int distance_cm){
-  if ((distance_cm < 20)){
+  if ((distance_cm < COLLISION_DIST)){
     setCollisionBit(COLLISION_TRUE);
     int randnum = random (10);
     if (randnum < 5){
@@ -184,7 +166,8 @@ void dismantleRX(byte arr[]){
   }
 }
 
-void bluetoothTransmit(byte *arr){
+
+{
 
   if (!transmitRunning){ 
      timer2.start(200);
