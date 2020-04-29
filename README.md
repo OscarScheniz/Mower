@@ -2,6 +2,16 @@
 
 ![41015792](https://user-images.githubusercontent.com/32966642/80582064-619bd800-8a0e-11ea-9700-851d085da7d7.png)
 
+Code is written in C++ based on Arduino Mega using Bluetooth Low Energy (BLE) to communication. 
+
+## REQUIRMENTS
+
+#M1.1: The Mower shall be capable of running autonomously within a confined area.
+
+#M1.2: The Mower shall be able to avoid collision objects during automous operation.
+
+#M1.3 The Mower shall be able to accept and execute drive commands given by a remote device.
+
 ## FUNCTION DESCRIPTION
 
 void forward() Sets the mower to move forward. Speed is set by global variable moveSpeed (Default = 127).
