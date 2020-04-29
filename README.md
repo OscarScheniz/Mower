@@ -1,4 +1,4 @@
-# Makeblock Mbot - Based on Arduino Mega with BLE communication 
+# Makeblock Mbot
 
 ![41015792](https://user-images.githubusercontent.com/32966642/80582064-619bd800-8a0e-11ea-9700-851d085da7d7.png)
 
