@@ -28,9 +28,7 @@
 #define COLLISION_FALSE   0x00
 #define COLLISION_TRUE    0x01
 
-
 #define BUFF_LEN          6  
-
 
 // Port setup
 MeUltrasonicSensor ultrasensor(PORT_10); //PORT 10
@@ -54,7 +52,7 @@ bool transmitRunning = false;
 *****************************/
 byte txArr[BUFF_LEN] = {0};
 byte rxArr[BUFF_LEN] = {0};
-
+/*
 void encoder1_process(void)
 {
   if (digitalRead(Encoder_1.getPortB()) == 0){
@@ -73,7 +71,7 @@ void encoder2_process(){
     Encoder_2.pulsePosPlus();
   }
 }
-
+*/
 void forward(){
   Encoder_1.setMotorPwm(-moveSpeed);
   Encoder_2.setMotorPwm(moveSpeed);
@@ -172,7 +170,7 @@ void readSensor(int device){
 }
 
 void dismantleRX(byte arr[]){ 
-  while(Serial.available() > 0)
+  while(Serial.available() > 5)
   {
     for(int i = 0; i < 6; i++)
     {
@@ -189,7 +187,7 @@ void dismantleRX(byte arr[]){
 void bluetoothTransmit(byte *arr){
 
   if (!transmitRunning){ 
-     timer2.start(100);
+     timer2.start(200);
      transmitRunning = true;
      }
   else if (timer2.justFinished()) {  
@@ -220,6 +218,10 @@ void manualDrive(int arr){
       turnLeft();
       break;  
   }
+}
+
+void setModebit(int mode){
+  txArr[1] = mode;
 }
 
 void setStopbit(){
@@ -385,16 +387,18 @@ void loop() {
   
   if(rxArr[1] == MANUAL_MODE) // Check if manual mode is enable
   {
+    setModebit(MANUAL_MODE);
     manualDrive(rxArr[2]);
   }
   else if (rxArr[1] == AUTONOM_MODE) // Check if autonom mode is enable
   { 
+    setModebit(AUTONOM_MODE);
     readSensor(IR_SENSOR);
     readSensor(ULTRASONIC_SENSOR);
   } 
 
   calcAnglePos(); // Calculate area of movement
 
-  bluetoothTransmit(txArr); // Send outgoing data 
+  bluetoothTransmit(txArr); // Send outgoing data
   setCollisionBit(COLLISION_FALSE); 
 }
