@@ -64,4 +64,6 @@ void setup() Initialize UART communication and the mower
 
 void loop() Mower main program
 
+## POSITION CALCULATION USING GYROSCOPE
 
+![Mower](https://user-images.githubusercontent.com/32966642/80640682-0b598400-8a64-11ea-8bbe-61a35b3b07c0.png)
