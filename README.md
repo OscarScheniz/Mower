@@ -2,7 +2,7 @@
 
 ![41015792](https://user-images.githubusercontent.com/32966642/80582064-619bd800-8a0e-11ea-9700-851d085da7d7.png)
 
-Code is written in C++ based on Arduino Mega using Bluetooth Low Energy (BLE) to communication. 
+Code is written in C++ based on Arduino Mega using Bluetooth Low Energy (BLE) communication. 
 
 ## REQUIRMENTS
 
