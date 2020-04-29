@@ -1,6 +1,6 @@
 # Mower
 
-# FUNCTION DESCRIPTION
+## FUNCTION DESCRIPTION
 
 void forward() Sets the mower to move forward. Speed is set by global variable moveSpeed (Default = 127).
 
