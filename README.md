@@ -1,5 +1,7 @@
 # Mower
 
+![Makebot](https://user-images.githubusercontent.com/32966642/80581451-75930a00-8a0d-11ea-8c18-8b9409c87000.png)
+
 ## FUNCTION DESCRIPTION
 
 void forward() Sets the mower to move forward. Speed is set by global variable moveSpeed (Default = 127).
