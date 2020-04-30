@@ -66,4 +66,5 @@ void loop() Mower main program
 
 ## POSITION CALCULATION USING GYROSCOPE
 
+![Mower](https://user-images.githubusercontent.com/32966642/80689941-5d36f400-8ace-11ea-8260-6b7d59f079bf.png)
 
