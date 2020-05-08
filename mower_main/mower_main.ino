@@ -166,7 +166,7 @@ void dismantleRX(byte arr[]){
   }
 }
 
-
+void bluetoothTransmit(byte* arr)
 {
 
   if (!transmitRunning){ 
