@@ -11,7 +11,7 @@
 #define IR_SENSOR         0x02
 
 // Constant speed 
-#define VELOCITY          20    // 20 cm/s 
+#define RESOLUTION        100      // 2 cm/s 
 #define COLLISION_DIST    20 
 
 // Communication Protocol
@@ -246,7 +246,7 @@ void calcAnglePos(){
   }
   if((angle >= -22) && (angle < 22)){
     if (!delayRunning){ 
-     timer.start(1000);
+     timer.start(RESOLUTION);
      delayRunning = true;
      }
     else if (timer.justFinished()) {  
@@ -257,7 +257,7 @@ void calcAnglePos(){
   else if((angle >= 22) && (angle < 66)){
     
     if (!delayRunning){ 
-     timer.start(1000);
+     timer.start(RESOLUTION);
      delayRunning = true;
      }
     else if (timer.justFinished()) {  
@@ -268,7 +268,7 @@ void calcAnglePos(){
   }
   else if((angle >= 66) && (angle < 112)){
     if (!delayRunning){ 
-     timer.start(1000);
+     timer.start(RESOLUTION);
      delayRunning = true;
      }
     else if (timer.justFinished()) {  
@@ -278,7 +278,7 @@ void calcAnglePos(){
   }
   else if((angle >= 112) && (angle < 157)){
     if (!delayRunning){ 
-     timer.start(1000);
+     timer.start(RESOLUTION);
      delayRunning = true;
      }
     else if (timer.justFinished()) {  
@@ -289,7 +289,7 @@ void calcAnglePos(){
   }
   else if((angle >= 157) && (angle < 180)){
     if (!delayRunning){ 
-     timer.start(1000);
+     timer.start(RESOLUTION);
      delayRunning = true;
      }
     else if (timer.justFinished()) {  
@@ -299,7 +299,7 @@ void calcAnglePos(){
   }
   else if((angle < -22) && (angle >= -66)){
     if (!delayRunning){ 
-     timer.start(1000);
+     timer.start(RESOLUTION);
      delayRunning = true;
      }
     else if (timer.justFinished()) {  
@@ -310,7 +310,7 @@ void calcAnglePos(){
   }
   else if((angle < -67) && (angle >= -112)){
     if (!delayRunning){ 
-     timer.start(1000);
+     timer.start(RESOLUTION);
      delayRunning = true;
      }
     else if (timer.justFinished()) {  
@@ -320,7 +320,7 @@ void calcAnglePos(){
   }
   else if((angle < -112) && (angle >= -157)){
     if (!delayRunning){ 
-     timer.start(1000);
+     timer.start(RESOLUTION);
      delayRunning = true;
      }
     else if (timer.justFinished()) {  
@@ -331,7 +331,7 @@ void calcAnglePos(){
   }
   else if((angle < -157) && (angle >= -180)){
     if (!delayRunning){ 
-     timer.start(1000);
+     timer.start(RESOLUTION);
      delayRunning = true;
      }
     else if (timer.justFinished()) {  
